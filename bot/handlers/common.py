@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 
 from aiogram import F, Router
+from aiogram.enums import ChatType
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
@@ -14,6 +15,8 @@ from ..config import Config
 from .report import start_report, start_urgent_report
 
 router = Router(name="common")
+# Сценарии информатора работают только в личке, чтобы бот не отвечал в общих чатах.
+router.message.filter(F.chat.type == ChatType.PRIVATE)
 
 
 @router.message(CommandStart())

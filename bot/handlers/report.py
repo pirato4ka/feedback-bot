@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 
 from aiogram import Bot, F, Router
+from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -18,6 +19,8 @@ from ..sender import KIND_LABELS, deliver_report, detect_kind, dump_payload, pre
 from ..utils import now_utc, parse_iso
 
 router = Router(name="report")
+# Обращения принимаются только в личке: в общих чатах бот молчит.
+router.message.filter(F.chat.type == ChatType.PRIVATE)
 
 DEFAULT_ANONYMOUS = True
 

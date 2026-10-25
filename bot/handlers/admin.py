@@ -8,6 +8,7 @@ import logging
 from datetime import timedelta
 
 from aiogram import Bot, F, Router
+from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -33,7 +34,7 @@ from ..utils import format_dt, now_iso, now_utc, parse_interval, to_iso
 log = logging.getLogger(__name__)
 
 router = Router(name="admin")
-router.message.filter(IsAdmin())
+router.message.filter(IsAdmin(), F.chat.type == ChatType.PRIVATE)
 router.callback_query.filter(IsAdmin())
 
 # Кнопки на уведомлениях об обращениях: доступны админам из ADMIN_IDS и участникам

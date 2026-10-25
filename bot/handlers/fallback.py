@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from aiogram import Router
+from aiogram import F, Router
+from aiogram.enums import ChatType
 from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
@@ -13,6 +14,8 @@ from ..config import Config
 log = logging.getLogger(__name__)
 
 router = Router(name="fallback")
+# Только личка: в общих чатах бот не должен отвечать на обычные сообщения.
+router.message.filter(F.chat.type == ChatType.PRIVATE)
 
 
 @router.message()

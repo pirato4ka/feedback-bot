@@ -5,11 +5,20 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from aiogram import BaseMiddleware
+from aiogram.enums import ChatType
 from aiogram.filters import BaseFilter
 from aiogram.types import CallbackQuery, Message, TelegramObject
 
 from .config import Config
 from .db import Database
+
+
+def _is_private_chat(event: TelegramObject) -> bool:
+    """Личка ли это (у Message чат в event.chat, у CallbackQuery — в event.message)."""
+    chat = getattr(event, "chat", None)
+    if chat is None:
+        chat = getattr(getattr(event, "message", None), "chat", None)
+    return getattr(chat, "type", None) == ChatType.PRIVATE
 
 
 class UserMiddleware(BaseMiddleware):
@@ -23,6 +32,11 @@ class UserMiddleware(BaseMiddleware):
     ) -> Any:
         user = data.get("event_from_user")
         if user is None or user.is_bot:
+            return await handler(event, data)
+
+        # В общих чатах бот только доставляет уведомления и слушает кнопки:
+        # участников не записываем в базу и не считаем заблокированными.
+        if not _is_private_chat(event):
             return await handler(event, data)
 
         db: Database = data["db"]

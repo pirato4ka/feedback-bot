@@ -7,6 +7,7 @@ import logging
 from datetime import timedelta
 
 from aiogram import Bot, F, Router
+from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -24,7 +25,7 @@ from .admin import AdminFlow
 log = logging.getLogger(__name__)
 
 router = Router(name="broadcasts")
-router.message.filter(IsAdmin())
+router.message.filter(IsAdmin(), F.chat.type == ChatType.PRIVATE)
 router.callback_query.filter(IsAdmin())
 
 
