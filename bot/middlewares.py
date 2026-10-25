@@ -44,3 +44,23 @@ class IsAdmin(BaseFilter):
     ) -> bool:
         user = event.from_user
         return bool(user and config.is_admin(user.id))
+
+
+class IsAdminOrAdminChat(BaseFilter):
+    """Администратор из ADMIN_IDS либо участник общего чата администрации.
+
+    Нужен для кнопок на уведомлениях об обращениях: их нажимают в чате
+    ADMIN_CHAT_ID, где участники не обязаны быть перечислены в ADMIN_IDS.
+    """
+
+    async def __call__(
+        self, event: Message | CallbackQuery, config: Config
+    ) -> bool:
+        user = event.from_user
+        if config.is_admin(user.id if user else None):
+            return True
+        chat = getattr(event, "chat", None)
+        if chat is None:
+            message = getattr(event, "message", None)
+            chat = message.chat if message is not None else None
+        return bool(config.admin_chat_id and chat and chat.id == config.admin_chat_id)

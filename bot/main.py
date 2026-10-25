@@ -42,6 +42,7 @@ def build_dispatcher(
 
     # Порядок важен: админские сценарии раньше общих, fallback — последним.
     dp.include_routers(
+        admin.notify_router,
         admin.router,
         broadcasts.router,
         report.router,

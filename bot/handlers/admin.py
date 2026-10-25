@@ -17,7 +17,7 @@ from aiogram.types import CallbackQuery, FSInputFile, Message
 from .. import keyboards, texts
 from ..config import Config
 from ..db import Database
-from ..middlewares import IsAdmin
+from ..middlewares import IsAdmin, IsAdminOrAdminChat
 from ..scheduler import BroadcastScheduler
 from ..sender import (
     KIND_LABELS,
@@ -35,6 +35,13 @@ log = logging.getLogger(__name__)
 router = Router(name="admin")
 router.message.filter(IsAdmin())
 router.callback_query.filter(IsAdmin())
+
+# Кнопки на уведомлениях об обращениях: доступны админам из ADMIN_IDS и участникам
+# общего чата ADMIN_CHAT_ID. Подключается в main.py ДО router, иначе фильтр IsAdmin
+# отсечёт участников чата и нажатие уйдёт в fallback («Кнопка устарела»).
+notify_router = Router(name="admin_notifications")
+notify_router.message.filter(IsAdminOrAdminChat())
+notify_router.callback_query.filter(IsAdminOrAdminChat())
 
 REPORTS_PAGE_SIZE = 5
 
@@ -143,6 +150,7 @@ async def show_report(
         )
     await callback.answer()
 
+
 @router.callback_query(F.data.startswith("adm:content:"))
 async def resend_content(callback: CallbackQuery, db: Database, bot: Bot) -> None:
     report_id = _int_at(callback.data, 2)
@@ -159,21 +167,21 @@ async def resend_content(callback: CallbackQuery, db: Database, bot: Bot) -> Non
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("rep:done:"))
+@notify_router.callback_query(F.data.startswith("rep:done:"))
 async def mark_done(callback: CallbackQuery, db: Database) -> None:
     report_id = _int_at(callback.data, 2)
     await db.set_report_status(report_id, "done", callback.from_user.id)
     await callback.answer(texts.REPORT_DONE.format(report_id=report_id), show_alert=True)
 
 
-@router.callback_query(F.data.startswith("rep:spam:"))
+@notify_router.callback_query(F.data.startswith("rep:spam:"))
 async def mark_spam(callback: CallbackQuery, db: Database) -> None:
     report_id = _int_at(callback.data, 2)
     await db.set_report_status(report_id, "spam", callback.from_user.id)
     await callback.answer(texts.REPORT_SPAM.format(report_id=report_id), show_alert=True)
 
 
-@router.callback_query(F.data.startswith("rep:reply:"))
+@notify_router.callback_query(F.data.startswith("rep:reply:"))
 async def start_reply(callback: CallbackQuery, state: FSMContext, db: Database) -> None:
     report_id = _int_at(callback.data, 2)
     report = await db.get_report(report_id)
@@ -185,12 +193,19 @@ async def start_reply(callback: CallbackQuery, state: FSMContext, db: Database) 
     await state.update_data(report_id=report_id)
     await callback.message.answer(
         texts.REPLY_PROMPT.format(report_id=report_id),
-        reply_markup=keyboards.cancel_only("adm:cancel"),
+        reply_markup=keyboards.cancel_only("adm:repcancel"),
     )
     await callback.answer()
 
 
-@router.message(StateFilter(AdminFlow.waiting_reply), ~F.text.startswith("/"))
+@notify_router.callback_query(F.data == "adm:repcancel")
+async def cancel_reply(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.message.edit_text("❌ Ответ отменён.")
+    await callback.answer()
+
+
+@notify_router.message(StateFilter(AdminFlow.waiting_reply), ~F.text.startswith("/"))
 async def send_reply(
     message: Message, state: FSMContext, db: Database, bot: Bot
 ) -> None:
