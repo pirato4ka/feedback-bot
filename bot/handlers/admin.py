@@ -25,6 +25,7 @@ from ..sender import (
     detect_kind,
     dump_payload,
     preview_of,
+    sender_label,
     send_stored,
 )
 from ..utils import format_dt, now_iso, now_utc, parse_interval, to_iso
@@ -54,22 +55,12 @@ def _int_at(value: str | None, index: int, default: int = 0) -> int:
         return default
 
 
-def _sender_label(report, user) -> str:
-    if report["anonymous"]:
-        return texts.SENDER_ANONYMOUS
-    name = html.escape(user["full_name"]) if user and user["full_name"] else "—"
-    username = ""
-    if user is not None and user["username"]:
-        username = f" (@{html.escape(user['username'])})"
-    return texts.SENDER_NAMED.format(name=name, username=username, user_id=report["user_id"])
-
-
 def _report_view_text(report, user, config: Config) -> str:
     return texts.REPORT_ADMIN_VIEW.format(
         report_id=report["id"],
         category=html.escape(texts.category_label(report["category"])),
         kind=KIND_LABELS.get(report["kind"], report["kind"]),
-        sender=_sender_label(report, user),
+        sender=sender_label(report, user),
         created_at=format_dt(report["created_at"], config.display_utc_offset),
         status=texts.STATUS_LABELS.get(report["status"], report["status"]),
         preview=html.escape(report["preview"] or "—"),
@@ -273,8 +264,8 @@ async def export_reports(callback: CallbackQuery, db: Database, config: Config) 
                     KIND_LABELS.get(row["kind"], row["kind"]),
                     "да" if row["anonymous"] else "нет",
                     row["user_id"],
-                    "" if row["anonymous"] else (row["user_full_name"] or ""),
-                    "" if row["anonymous"] else (row["user_username"] or ""),
+                    row["user_full_name"] or "",
+                    row["user_username"] or "",
                     texts.STATUS_LABELS.get(row["status"], row["status"]),
                     (row["preview"] or "").replace("\n", " "),
                 ]

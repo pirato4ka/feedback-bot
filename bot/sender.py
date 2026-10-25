@@ -120,25 +120,34 @@ def admin_targets(config: Config) -> list[int]:
     return sorted(config.admin_ids)
 
 
-def build_report_header(report: Any, user: Any, config: Config) -> str:
-    if report["anonymous"]:
-        sender = texts.SENDER_ANONYMOUS
-    else:
-        username = ""
-        name = "—"
-        if user is not None:
-            name = html.escape(user["full_name"] or "—")
-            if user["username"]:
-                username = f" (@{html.escape(user['username'])})"
-        sender = texts.SENDER_NAMED.format(
-            name=name, username=username, user_id=report["user_id"]
-        )
+def sender_label(report: Any, user: Any) -> str:
+    """Автор обращения: имя, @username и id.
 
+    Администрация видит автора всегда — даже если он выбрал анонимный режим,
+    иначе невозможно ответить на обращение и защитить общину от спама.
+    Режим анонимности показывается отдельной пометкой.
+    """
+    name = "—"
+    username = ""
+    if user is not None:
+        name = html.escape(user["full_name"] or "—")
+        if user["username"]:
+            username = f" (@{html.escape(user['username'])})"
+
+    label = texts.SENDER_NAMED.format(
+        name=name, username=username, user_id=report["user_id"]
+    )
+    if report["anonymous"]:
+        label += texts.SENDER_ANONYMITY_NOTE
+    return label
+
+
+def build_report_header(report: Any, user: Any, config: Config) -> str:
     return texts.REPORT_ADMIN_HEADER.format(
         report_id=report["id"],
         category=html.escape(texts.category_label(report["category"])),
         kind=KIND_LABELS.get(report["kind"], report["kind"]),
-        sender=sender,
+        sender=sender_label(report, user),
         created_at=format_dt(report["created_at"], config.display_utc_offset),
     )
 
